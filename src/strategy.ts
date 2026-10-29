@@ -53,7 +53,7 @@ function evaluateMomentum(
   const longAverage = average(snapshot.longWindow);
   const difference = (shortAverage - longAverage) / longAverage;
   const confidence = clamp(
-    Math.abs(difference) / options.minimumDifference,
+    Math.abs(difference) / (options.minimumDifference * 2),
     0,
     1,
   );
