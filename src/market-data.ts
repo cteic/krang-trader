@@ -19,5 +19,20 @@ async function loadPriceSeries(path: string): Promise<PricePoint[]> {
   return priceSeriesSchema.parse(JSON.parse(contents));
 }
 
-export { loadPriceSeries, priceSeriesSchema };
+function selectPricePeriod(
+  prices: PricePoint[],
+  periodLength?: number,
+): PricePoint[] {
+  if (periodLength === undefined) {
+    return prices;
+  }
+
+  if (!Number.isInteger(periodLength) || periodLength < 10) {
+    throw new Error("The --last value must be an integer of at least 10 days");
+  }
+
+  return prices.slice(-periodLength);
+}
+
+export { loadPriceSeries, priceSeriesSchema, selectPricePeriod };
 export type { PricePoint };

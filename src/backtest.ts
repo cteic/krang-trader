@@ -5,15 +5,18 @@ interface BacktestOptions {
   feeRate: number;
   initialCash: number;
   longWindowSize: number;
+  maximumBuyAllocation: number;
   maximumDrawdown: number;
   minimumConfidence: number;
   minimumDifference: number;
+  minimumTradeValue: number;
   positionFraction: number;
   shortWindowSize: number;
 }
 
 interface SimulatedTrade {
   action: typeof ACTIONS.buy | typeof ACTIONS.sell;
+  allocationAfter: number;
   fee: number;
   price: number;
   quantity: number;
@@ -44,9 +47,11 @@ const DEFAULT_BACKTEST_OPTIONS: BacktestOptions = {
   feeRate: 0.001,
   initialCash: 10_000,
   longWindowSize: 8,
+  maximumBuyAllocation: 0.75,
   maximumDrawdown: 0.12,
   minimumConfidence: 0.7,
   minimumDifference: 0.015,
+  minimumTradeValue: 25,
   positionFraction: 0.25,
   shortWindowSize: 3,
 };
@@ -77,8 +82,16 @@ function validateOptions(options: BacktestOptions): void {
     throw new Error("Minimum difference must be a positive finite value");
   }
 
+  if (
+    !Number.isFinite(options.minimumTradeValue) ||
+    options.minimumTradeValue <= 0
+  ) {
+    throw new Error("Minimum trade value must be a positive finite value");
+  }
+
   const fractions = [
     options.feeRate,
+    options.maximumBuyAllocation,
     options.maximumDrawdown,
     options.minimumConfidence,
     options.positionFraction,
@@ -90,8 +103,18 @@ function validateOptions(options: BacktestOptions): void {
     throw new Error("Risk settings must be finite values between zero and one");
   }
 
-  if (options.maximumDrawdown === 0 || options.positionFraction === 0) {
-    throw new Error("Drawdown and position limits must be greater than zero");
+  if (options.feeRate === 1) {
+    throw new Error("Fee rate must be less than one");
+  }
+
+  if (
+    options.maximumBuyAllocation === 0 ||
+    options.maximumDrawdown === 0 ||
+    options.positionFraction === 0
+  ) {
+    throw new Error(
+      "Allocation, drawdown and order limits must be greater than zero",
+    );
   }
 }
 
@@ -194,6 +217,7 @@ function runBacktest(
         feesPaid += fee;
         trades.push({
           action: ACTIONS.sell,
+          allocationAfter: 0,
           fee,
           price: point.price,
           quantity,
@@ -220,9 +244,23 @@ function runBacktest(
         decision.confidence >= options.minimumConfidence &&
         decision.action === ACTIONS.buy
       ) {
-        const spend = portfolio.cash * options.positionFraction;
+        const currentValue = portfolioValue(portfolio, point.price);
+        const currentAssetValue = portfolio.asset * point.price;
+        const remainingCapacity = Math.max(
+          currentValue * options.maximumBuyAllocation - currentAssetValue,
+          0,
+        );
+        const capacitySpend =
+          remainingCapacity /
+          (1 -
+            options.feeRate +
+            options.maximumBuyAllocation * options.feeRate);
+        const spend = Math.min(
+          portfolio.cash * options.positionFraction,
+          capacitySpend,
+        );
 
-        if (spend > 0) {
+        if (spend >= options.minimumTradeValue) {
           const fee = spend * options.feeRate;
           const quantity = (spend - fee) / point.price;
           portfolio.cash -= spend;
@@ -230,6 +268,9 @@ function runBacktest(
           feesPaid += fee;
           trades.push({
             action: ACTIONS.buy,
+            allocationAfter:
+              (portfolio.asset * point.price) /
+              portfolioValue(portfolio, point.price),
             fee,
             price: point.price,
             quantity,
@@ -245,14 +286,18 @@ function runBacktest(
       ) {
         const quantity = portfolio.asset * options.positionFraction;
 
-        if (quantity > 0) {
-          const grossProceeds = quantity * point.price;
+        const grossProceeds = quantity * point.price;
+
+        if (grossProceeds >= options.minimumTradeValue) {
           const fee = grossProceeds * options.feeRate;
           portfolio.asset -= quantity;
           portfolio.cash += grossProceeds - fee;
           feesPaid += fee;
           trades.push({
             action: ACTIONS.sell,
+            allocationAfter:
+              (portfolio.asset * point.price) /
+              portfolioValue(portfolio, point.price),
             fee,
             price: point.price,
             quantity,

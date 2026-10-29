@@ -35,6 +35,33 @@ describe("runBacktest", () => {
     expect(result.tradeCount).toBe(0);
   });
 
+  it("caps asset exposure after each simulated purchase", () => {
+    const result = runBacktest(
+      createSeries([
+        100, 100, 101, 101, 102, 103, 105, 108, 111, 114, 117, 120,
+      ]),
+      { ...DEFAULT_BACKTEST_OPTIONS, maximumBuyAllocation: 0.5 },
+    );
+
+    expect(result.trades.length).toBeGreaterThan(0);
+    expect(
+      result.trades
+        .filter(({ action }) => action === "buy")
+        .every(({ allocationAfter }) => allocationAfter <= 0.500_000_1),
+    ).toBe(true);
+  });
+
+  it("does not create orders below the minimum trade value", () => {
+    const result = runBacktest(
+      createSeries([
+        100, 100, 101, 101, 102, 103, 105, 108, 111, 114, 117, 120,
+      ]),
+      { ...DEFAULT_BACKTEST_OPTIONS, minimumTradeValue: 3_000 },
+    );
+
+    expect(result.tradeCount).toBe(0);
+  });
+
   it("halts after the portfolio breaches its maximum drawdown", () => {
     const result = runBacktest(
       createSeries([
