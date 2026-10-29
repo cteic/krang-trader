@@ -42,13 +42,13 @@ Never commit `.env` or share the key.
 Verify the registered agent profile:
 
 ```sh
-pnpm dev -- profile
+pnpm dev profile
 ```
 
 Inspect the sandbox portfolio:
 
 ```sh
-pnpm dev -- portfolio
+pnpm dev portfolio
 ```
 
 Run the complete local verification suite:
