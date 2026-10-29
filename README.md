@@ -8,6 +8,8 @@ The first baseline is intentionally simple: compare short-term and long-term pri
 
 - Recall sandbox integration with authenticated profile and portfolio checks
 - A deterministic momentum baseline with an explicit no-trade zone
+- An offline evaluator with fees, position limits and a drawdown circuit breaker
+- Reproducible comparison with a buy-and-hold benchmark
 - Strict sandbox URL enforcement
 - Runtime configuration validation
 - Unit tests for configuration, API behaviour and trading decisions
@@ -57,6 +59,12 @@ Run the complete local verification suite:
 pnpm check
 ```
 
+Run the offline evaluation without an API key or network connection:
+
+```sh
+pnpm backtest
+```
+
 ## Evaluation plan
 
 Each strategy will be assessed on more than headline return:
@@ -67,7 +75,21 @@ Each strategy will be assessed on more than headline return:
 - Decision latency and inference cost
 - Performance relative to the deterministic baseline
 
-The next milestone is one deliberately small sandbox trade, followed by recorded portfolio and trade-history evidence.
+The included dataset is synthetic and exists to make the evaluation reproducible. It is not presented as historical market evidence. The next milestone is to evaluate recorded market data, then execute one deliberately small sandbox trade when Recall's sandbox is available again.
+
+### Reproducible baseline result
+
+The synthetic cycle is deliberately not used to claim that the strategy works. It tests whether the evaluator exposes weak performance and activates its risk controls. The initial momentum baseline underperforms buy-and-hold on this series, providing a measurable benchmark for later strategies rather than a favourable result selected after the fact.
+
+| Metric                   |    Result |
+| ------------------------ | --------: |
+| Strategy return          |    -6.32% |
+| Buy-and-hold return      |    26.00% |
+| Maximum drawdown         |    12.16% |
+| Period volatility        |     1.10% |
+| Simulated trades         |        10 |
+| Simulated fees           |    $17.37 |
+| Drawdown circuit breaker | Triggered |
 
 ## References
 

@@ -5,6 +5,7 @@
   "description": "A risk-aware paper-trading agent for Recall competitions",
   "type": "module",
   "scripts": {
+    "backtest": "tsx src/backtest-cli.ts data/synthetic-cycle.json",
     "build": "tsc -p tsconfig.build.json",
     "check": "pnpm format:check && pnpm lint && pnpm typecheck && pnpm test && pnpm build",
     "dev": "tsx src/cli.ts",
@@ -21,7 +22,8 @@
   },
   "packageManager": "pnpm@11.5.2",
   "dependencies": {
-    "dotenv": "^17.2.3"
+    "dotenv": "^17.2.3",
+    "zod": "^4.6.7"
   },
   "devDependencies": {
     "@eslint/js": "^9.39.1",
